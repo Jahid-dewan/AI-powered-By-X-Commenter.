@@ -24,6 +24,8 @@ interface PostCardProps {
   onRemove: (id: string) => void;
   onMarkCommented: (id: string) => void;
   isProcessing: boolean;
+  onFetchTweetInfo?: (id: string) => Promise<void> | void;
+  isFetchingInfo?: boolean;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
@@ -35,6 +37,8 @@ export const PostCard: React.FC<PostCardProps> = ({
   onRemove,
   onMarkCommented,
   isProcessing,
+  onFetchTweetInfo,
+  isFetchingInfo,
 }) => {
   const [copied, setCopied] = useState(false);
   const [justPrompted, setJustPrompted] = useState(false);
@@ -213,18 +217,43 @@ export const PostCard: React.FC<PostCardProps> = ({
           </div>
         ) : (
           <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-zinc-700">
-            <div className="flex items-center justify-between mb-1.5">
+            <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
               <span className="text-[11px] font-semibold text-amber-900 flex items-center gap-1">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
-                Post Content (Paste or write text for specific analysis)
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                Post Content (Paste or auto-detect)
               </span>
-              <span className="text-[10px] text-amber-700 font-medium">Guarantees unique comments</span>
+              <div className="flex items-center gap-2">
+                {onFetchTweetInfo && (
+                  <button
+                    id={`auto-detect-btn-${post.id}`}
+                    type="button"
+                    disabled={isFetchingInfo || isProcessing}
+                    onClick={() => onFetchTweetInfo(post.id)}
+                    className="text-[11px] font-semibold text-indigo-700 hover:text-indigo-900 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md transition-all inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    {isFetchingInfo ? (
+                      <>
+                        <RefreshCw className="w-3 h-3 animate-spin text-indigo-600" />
+                        <span>Detecting...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3 h-3 text-indigo-600" />
+                        <span>Auto-Detect with AI</span>
+                      </>
+                    )}
+                  </button>
+                )}
+                <span className="text-[10px] text-amber-700 font-medium hidden sm:inline">
+                  Guarantees unique comments
+                </span>
+              </div>
             </div>
             <textarea
               rows={2}
               value={post.tweetText || ''}
               onChange={(e) => onUpdateTweetText?.(post.id, e.target.value)}
-              placeholder="Paste what this post says (e.g. quote, claim, or news) so AI analyzes the exact message..."
+              placeholder="Click 'Auto-Detect with AI' above or paste what this post says..."
               className="w-full text-xs p-2 rounded-lg border border-amber-200 focus:border-zinc-900 outline-none text-zinc-800 bg-white placeholder:text-zinc-400"
             />
           </div>

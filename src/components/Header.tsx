@@ -5,10 +5,17 @@ interface HeaderProps {
   totalCount: number;
   readyCount: number;
   commentedCount: number;
+  hasApiKey?: boolean | null;
 }
 
-export const Header: React.FC<HeaderProps> = ({ totalCount, readyCount, commentedCount }) => {
+export const Header: React.FC<HeaderProps> = ({
+  totalCount,
+  readyCount,
+  commentedCount,
+  hasApiKey,
+}) => {
   const [copiedDonate, setCopiedDonate] = useState<boolean>(false);
+  const [showKeyHelp, setShowKeyHelp] = useState<boolean>(false);
   const donationAddress = '0xC7F70bdD9f0886A9227223B2e1764cAD21D5562A';
 
   const handleCopyDonate = () => {
@@ -29,10 +36,28 @@ export const Header: React.FC<HeaderProps> = ({ totalCount, readyCount, commente
               <h1 className="text-lg font-semibold text-zinc-900 tracking-tight">
                 Twitter/X Comment Assistant
               </h1>
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                <Sparkles className="w-3 h-3 text-emerald-600" />
-                AI Powered
-              </span>
+              {hasApiKey === true && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Gemini AI Active
+                </span>
+              )}
+              {hasApiKey === false && (
+                <button
+                  type="button"
+                  onClick={() => setShowKeyHelp(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 transition-colors cursor-pointer"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                  API Key Missing (Click for Fix)
+                </button>
+              )}
+              {hasApiKey === null && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 border border-zinc-200">
+                  <Sparkles className="w-3 h-3 text-zinc-500" />
+                  AI Powered
+                </span>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-zinc-500 mt-0.5">
               <span>Paste up to 20 post links and craft direct comments</span>
@@ -103,6 +128,35 @@ export const Header: React.FC<HeaderProps> = ({ totalCount, readyCount, commente
           </button>
         </div>
       </div>
+
+      {showKeyHelp && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-zinc-200">
+            <h3 className="text-base font-bold text-zinc-900 mb-2 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              How to Connect Gemini API Key on Vercel
+            </h3>
+            <p className="text-xs text-zinc-600 mb-3 leading-relaxed">
+              If you already added your key on Vercel and it still says missing, you must <strong>Redeploy</strong> for Vercel to inject the new environment variable.
+            </p>
+            <ol className="text-xs text-zinc-700 space-y-2 list-decimal list-inside bg-zinc-50 p-3 rounded-xl border border-zinc-200 font-sans">
+              <li>Open your project on <strong>vercel.com</strong>.</li>
+              <li>Go to <strong>Settings</strong> &rarr; <strong>Environment Variables</strong>.</li>
+              <li>Add key: <code className="bg-zinc-200 px-1 py-0.5 rounded font-mono font-bold text-zinc-900">GEMINI_API_KEY</code> with your Gemini API key.</li>
+              <li><strong>Crucial Step:</strong> Go to the <strong>Deployments</strong> tab, click the 3 dots (<code className="font-mono">...</code>) on the latest deployment, and click <strong>Redeploy</strong>.</li>
+            </ol>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowKeyHelp(false)}
+                className="px-4 py-2 bg-zinc-900 hover:bg-black text-white rounded-xl text-xs font-semibold cursor-pointer"
+              >
+                Got it, close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

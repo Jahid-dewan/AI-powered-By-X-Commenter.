@@ -58,10 +58,15 @@ export async function processCommentGeneration(
     postIndex = 0,
   } = params;
 
-  const apiKey = process.env.GEMINI_API_KEY || '';
+  const apiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GOOGLE_GENAI_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY ||
+    '';
   const hasApiKey = Boolean(apiKey && apiKey.trim());
 
-  // If tweetText is missing, fetch it via tweetService
+  // If tweetText is missing, fetch or detect it via tweetService
   let tweetData: TweetMetadata | null = null;
   if (post.tweetText && post.tweetText.trim()) {
     tweetData = {
@@ -70,12 +75,13 @@ export async function processCommentGeneration(
       authorHandle: post.authorHandle || '',
     };
   } else if (post.url) {
-    tweetData = await fetchTweetData(post.url, post.tweetId || '');
+    tweetData = await fetchTweetData(post.url, post.tweetId || '', post.username || '');
   }
 
   const effectiveTweetText = tweetData?.text || post.tweetText || '';
   const effectiveAuthorName = tweetData?.authorName || post.authorName || '';
-  const effectiveAuthorHandle = tweetData?.authorHandle || post.authorHandle || (post.username ? `@${post.username}` : '');
+  const effectiveAuthorHandle =
+    tweetData?.authorHandle || post.authorHandle || (post.username ? `@${post.username}` : '');
 
   const hasRealContent = Boolean(effectiveTweetText && effectiveTweetText.trim().length > 0);
 
@@ -124,6 +130,7 @@ ${userPersona ? `User Voice / Background Persona: "${userPersona}". Reflect this
 ${Array.isArray(previousComments) && previousComments.length > 0 ? `PREVIOUSLY GENERATED COMMENTS IN THIS SESSION (DO NOT REPEAT OR CLOSELY IMITATE ANY OF THESE):\n${previousComments.slice(-8).map((c: string) => `- "${c}"`).join('\n')}` : ''}
 
 For the target post:
+- Identify and summarize the exact quote or statement in 'tweetTextSummary'. If exact quote is not in direct memory, describe specifically what this creator posted or is addressing (this will be displayed as analyzed post content).
 - Identify the core topic (1-3 words, e.g. "AI Engineering", "SaaS Growth", "Design Systems").
 - Gauge author sentiment (e.g. "Optimistic", "Contemplative", "Analytical", "Direct").
 - Craft a primary reply following the requested tone: ${selectedTonePrompt}
@@ -140,11 +147,12 @@ ${postContext}
 Requested Primary Tone: ${tone}
 Uniqueness Seed: ${post.tweetId || postIndex}-${Date.now()}
 Remember: The comment MUST be specific to this exact post content, not a generic filler.`
-        : `Please analyze this Twitter/X post and craft engaging, completely distinct comments:
+        : `Please analyze this Twitter/X post, deduce what the author posted or discussed, and craft engaging, completely distinct comments:
 ${postContext}
 
 Requested Primary Tone: ${tone}
-Uniqueness Seed: ${post.tweetId || postIndex}-${Date.now()}`;
+Uniqueness Seed: ${post.tweetId || postIndex}-${Date.now()}
+Provide the post content statement/quote in 'tweetTextSummary'.`;
 
       const { responseText, retryDelaySeconds } = await generateContentWithFallback(ai, {
         contents: prompt,
@@ -155,7 +163,7 @@ Uniqueness Seed: ${post.tweetId || postIndex}-${Date.now()}`;
           properties: {
             tweetTextSummary: {
               type: Type.STRING,
-              description: 'Brief summary or extracted main quote of the post content',
+              description: 'Exact quote or concise summary of the post content',
             },
             topic: {
               type: Type.STRING,
@@ -188,7 +196,7 @@ Uniqueness Seed: ${post.tweetId || postIndex}-${Date.now()}`;
               required: ['insightful', 'casual', 'question'],
             },
           },
-          required: ['primaryComment', 'variations', 'topic'],
+          required: ['primaryComment', 'variations', 'topic', 'tweetTextSummary'],
         },
       });
 

@@ -26,15 +26,15 @@ async function startServer() {
   // Extract / fetch individual tweet info
   app.post('/api/fetch-tweet-info', async (req, res) => {
     try {
-      const { url, tweetId } = req.body;
+      const { url, tweetId, username } = req.body;
       if (!url) {
         return res.status(400).json({ error: 'URL is required' });
       }
-      const data = await fetchTweetData(url, tweetId || '');
-      return res.json({ data });
+      const data = await fetchTweetData(url, tweetId || '', username || '');
+      return res.json({ success: true, data });
     } catch (error) {
       console.error('Error fetching tweet info:', error);
-      return res.status(500).json({ error: 'Failed to fetch tweet details' });
+      return res.status(500).json({ success: false, error: 'Failed to fetch tweet details' });
     }
   });
 

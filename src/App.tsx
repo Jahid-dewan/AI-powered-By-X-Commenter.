@@ -25,7 +25,21 @@ export default function App() {
   const [analyzingIndex, setAnalyzingIndex] = useState<number>(-1);
   const [pacingStatus, setPacingStatus] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [fetchingInfoIds, setFetchingInfoIds] = useState<Set<string>>(new Set());
+  const [isAutoDetectingAll, setIsAutoDetectingAll] = useState<boolean>(false);
+  const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   const stopRequestedRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then((res) => res.json())
+      .then((data) => {
+        setHasApiKey(Boolean(data.hasApiKey));
+      })
+      .catch(() => {
+        setHasApiKey(false);
+      });
+  }, []);
 
   // Sync raw input to posts list, preserving existing generated content
   const handleInputChange = (newText: string) => {
@@ -104,6 +118,85 @@ export default function App() {
       setRawInput(remainingUrls);
       return remaining;
     });
+  };
+
+  const handleFetchTweetInfo = async (postId: string) => {
+    const post = posts.find((p) => p.id === postId);
+    if (!post) return;
+
+    setFetchingInfoIds((prev) => new Set(prev).add(postId));
+
+    try {
+      const res = await fetch('/api/fetch-tweet-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: post.url,
+          tweetId: post.tweetId,
+          username: post.username,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data && (data.data.text || data.data.authorName)) {
+        updateSinglePost(postId, {
+          tweetText: data.data.text || post.tweetText,
+          authorName: data.data.authorName || post.authorName,
+          authorHandle: data.data.authorHandle || post.authorHandle,
+          topic: data.data.topic || post.topic,
+        });
+        showToast('Post content detected & updated!');
+      } else {
+        showToast('Could not automatically extract post text. You can paste it directly.');
+      }
+    } catch {
+      showToast('Failed to connect to post extraction service.');
+    } finally {
+      setFetchingInfoIds((prev) => {
+        const next = new Set(prev);
+        next.delete(postId);
+        return next;
+      });
+    }
+  };
+
+  const handleAutoDetectAll = async () => {
+    const postsToDetect = posts.filter((p) => !p.tweetText || !p.tweetText.trim());
+    if (postsToDetect.length === 0) {
+      showToast('All posts already have content!');
+      return;
+    }
+
+    setIsAutoDetectingAll(true);
+    let count = 0;
+
+    for (const post of postsToDetect) {
+      try {
+        const res = await fetch('/api/fetch-tweet-info', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: post.url,
+            tweetId: post.tweetId,
+            username: post.username,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.data && (data.data.text || data.data.authorName)) {
+          updateSinglePost(post.id, {
+            tweetText: data.data.text || post.tweetText,
+            authorName: data.data.authorName || post.authorName,
+            authorHandle: data.data.authorHandle || post.authorHandle,
+            topic: data.data.topic || post.topic,
+          });
+          count++;
+        }
+      } catch {
+        // Continue to next post
+      }
+    }
+
+    setIsAutoDetectingAll(false);
+    showToast(`Detected content for ${count} of ${postsToDetect.length} post(s)!`);
   };
 
   // Analyze single post
@@ -319,6 +412,7 @@ export default function App() {
         totalCount={posts.length}
         readyCount={readyCount}
         commentedCount={commentedCount}
+        hasApiKey={hasApiKey}
       />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
@@ -354,6 +448,9 @@ export default function App() {
           onToneChange={setSelectedTone}
           userPersona={userPersona}
           onPersonaChange={setUserPersona}
+          onAutoDetectAll={handleAutoDetectAll}
+          isAutoDetectingAll={isAutoDetectingAll}
+          hasUnpopulatedContent={posts.some((p) => !p.tweetText || !p.tweetText.trim())}
         />
 
         {/* Progress & Stats Bar */}
@@ -395,6 +492,8 @@ export default function App() {
                   onRemove={handleRemovePost}
                   onMarkCommented={handleMarkCommented}
                   isProcessing={isAnalyzing && analyzingIndex === idx}
+                  onFetchTweetInfo={handleFetchTweetInfo}
+                  isFetchingInfo={fetchingInfoIds.has(post.id)}
                 />
               ))}
             </div>

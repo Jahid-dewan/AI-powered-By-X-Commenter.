@@ -1,7 +1,87 @@
+import { GoogleGenAI, Type } from '@google/genai';
+import { generateContentWithFallback } from './aiHelper.ts';
+
 export interface TweetMetadata {
   text: string;
   authorName: string;
   authorHandle: string;
+  topic?: string;
+}
+
+/**
+ * Detects tweet content, author, and topic using Gemini AI
+ */
+export async function detectTweetWithAI(
+  url: string,
+  tweetId: string,
+  authorUsername?: string
+): Promise<TweetMetadata | null> {
+  const apiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    process.env.GOOGLE_GENAI_API_KEY ||
+    process.env.VITE_GEMINI_API_KEY;
+
+  if (!apiKey) return null;
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const cleanUrl = (url || '').split('?')[0].split('#')[0];
+    const username =
+      authorUsername || cleanUrl.match(/(?:twitter\.com|x\.com)\/([A-Za-z0-9_]+)/i)?.[1] || '';
+
+    const prompt = `Analyze this Twitter / X post link:
+URL: ${cleanUrl}
+Tweet ID: ${tweetId || 'unknown'}
+Author Handle: ${username ? `@${username}` : 'unknown'}
+
+Task:
+1. Identify the author's display name and handle.
+2. If this is a known post or quote by this creator, provide the exact quote. If not in direct memory, provide a clear, accurate, concise summary of what this creator posted, claimed, or discussed in this post.
+3. Identify the main topic in 1-3 words (e.g. AI Engineering, Startup Hiring, Product Design).`;
+
+    const { responseText } = await generateContentWithFallback(ai, {
+      contents: prompt,
+      temperature: 0.7,
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          text: {
+            type: Type.STRING,
+            description: 'The quote or clear summary of the post content',
+          },
+          authorName: {
+            type: Type.STRING,
+            description: 'Full name of the author (e.g. Andrej Karpathy, Sam Altman)',
+          },
+          authorHandle: {
+            type: Type.STRING,
+            description: 'Handle with @ symbol (e.g. @karpathy)',
+          },
+          topic: {
+            type: Type.STRING,
+            description: 'Core subject matter in 1-3 words',
+          },
+        },
+        required: ['text', 'authorName', 'authorHandle', 'topic'],
+      },
+    });
+
+    if (responseText) {
+      const parsed = JSON.parse(responseText);
+      if (parsed.text) {
+        return {
+          text: parsed.text.trim(),
+          authorName: parsed.authorName || username || '',
+          authorHandle: parsed.authorHandle || (username ? `@${username}` : ''),
+          topic: parsed.topic || '',
+        };
+      }
+    }
+  } catch (err) {
+    console.error('AI tweet detection fallback error:', err);
+  }
+  return null;
 }
 
 /**
@@ -9,10 +89,17 @@ export interface TweetMetadata {
  * 1. Official Twitter oEmbed API
  * 2. Twimg Syndication API
  * 3. FxTwitter API
+ * 4. Gemini AI detection fallback (when web scraping is blocked)
  */
-export async function fetchTweetData(url: string, tweetId: string): Promise<TweetMetadata | null> {
+export async function fetchTweetData(
+  url: string,
+  tweetId: string,
+  authorUsername?: string
+): Promise<TweetMetadata | null> {
   const cleanUrl = (url || '').split('?')[0].split('#')[0];
   const id = tweetId || cleanUrl.match(/status(?:es)?\/(\d+)/i)?.[1] || '';
+  const username =
+    authorUsername || cleanUrl.match(/(?:twitter\.com|x\.com)\/([A-Za-z0-9_]+)/i)?.[1] || '';
 
   // 1. Try Twitter oEmbed API
   if (cleanUrl) {
@@ -116,6 +203,14 @@ export async function fetchTweetData(url: string, tweetId: string): Promise<Twee
       }
     } catch {
       // Ignore
+    }
+  }
+
+  // 4. Try Gemini AI detection fallback when web scraping is blocked
+  if (cleanUrl) {
+    const aiResult = await detectTweetWithAI(cleanUrl, id, username);
+    if (aiResult) {
+      return aiResult;
     }
   }
 

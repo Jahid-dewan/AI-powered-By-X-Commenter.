@@ -15,13 +15,13 @@ export default async function handler(req: any, res: any) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { url, tweetId } = body;
+    const { url, tweetId, username } = body;
 
     if (!url) {
       return res.status(400).json({ error: 'URL is required' });
     }
 
-    const data = await fetchTweetData(url, tweetId || '');
+    const data = await fetchTweetData(url, tweetId || '', username || '');
     return res.status(200).json({ success: true, data });
   } catch (error: any) {
     console.error('Error in Vercel /api/fetch-tweet-info:', error);
