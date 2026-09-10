@@ -8,6 +8,7 @@ import { Header } from './components/Header';
 import { LinkInputSection } from './components/LinkInputSection';
 import { PostCard } from './components/PostCard';
 import { StatsBar } from './components/StatsBar';
+import { Footer } from './components/Footer';
 import { extractTwitterUrls } from './utils/twitterParser';
 import { getUniqueFallbackComment } from './utils/uniqueCommentGenerator';
 import { TweetPostItem, CommentTone } from './types';
@@ -421,6 +422,9 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Footer with Creator and Donation Info */}
+      <Footer />
 
       {/* Floating Toast Notification */}
       {toastMessage && (
