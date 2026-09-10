@@ -1,40 +1,64 @@
+ts
 import express from 'express';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
+
 import { fetchTweetData } from './server/tweetService.ts';
 import { processCommentGeneration } from './server/commentService.ts';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+
+  // Render provides the PORT environment variable.
+  // Fall back to 3000 for local development.
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json({ limit: '5mb' }));
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {
-    const hasApiKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
-    res.json({ status: 'ok', hasApiKey });
+    const hasApiKey = Boolean(
+      process.env.GEMINI_API_KEY &&
+      process.env.GEMINI_API_KEY.trim()
+    );
+
+    res.json({
+      status: 'ok',
+      hasApiKey,
+    });
   });
 
   // Extract / fetch individual tweet info
   app.post('/api/fetch-tweet-info', async (req, res) => {
     try {
       const { url, tweetId, username } = req.body;
+
       if (!url) {
-        return res.status(400).json({ error: 'URL is required' });
+        return res.status(400).json({
+          error: 'URL is required',
+        });
       }
-      const data = await fetchTweetData(url, tweetId || '', username || '');
-      return res.json({ success: true, data });
+
+      const data = await fetchTweetData(
+        url,
+        tweetId || '',
+        username || ''
+      );
+
+      return res.json({
+        success: true,
+        data,
+      });
     } catch (error) {
       console.error('Error fetching tweet info:', error);
-      return res.status(500).json({ success: false, error: 'Failed to fetch tweet details' });
+
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch tweet details',
+      });
     }
   });
 
@@ -51,7 +75,9 @@ async function startServer() {
       } = req.body;
 
       if (!post || !post.url) {
-        return res.status(400).json({ error: 'Post data with URL is required' });
+        return res.status(400).json({
+          error: 'Post data with URL is required',
+        });
       }
 
       const result = await processCommentGeneration({
@@ -69,10 +95,16 @@ async function startServer() {
         hasApiKey: result.hasApiKey,
       });
     } catch (error: any) {
-      console.error('Handled error in /api/generate-comment:', error);
+      console.error(
+        'Handled error in /api/generate-comment:',
+        error
+      );
+
       return res.status(500).json({
         success: false,
-        error: error.message || 'Failed to generate comment',
+        error:
+          error.message ||
+          'Failed to generate comment',
       });
     }
   });
@@ -80,56 +112,102 @@ async function startServer() {
   // Batch analyze multiple posts
   app.post('/api/batch-generate', async (req, res) => {
     try {
-      const { posts, tone = 'engaging', userPersona = '', language = 'English' } = req.body;
+      const {
+        posts,
+        tone = 'engaging',
+        userPersona = '',
+        language = 'English',
+      } = req.body;
+
       if (!Array.isArray(posts) || posts.length === 0) {
-        return res.status(400).json({ error: 'Array of posts is required' });
+        return res.status(400).json({
+          error: 'Array of posts is required',
+        });
       }
 
+      // Limit batch processing to 20 posts
       const targetPosts = posts.slice(0, 20);
+
       const results = [];
       const previousComments: string[] = [];
 
       for (let i = 0; i < targetPosts.length; i++) {
-        const p = targetPosts[i];
-        const resItem = await processCommentGeneration({
-          post: p,
+        const post = targetPosts[i];
+
+        const result = await processCommentGeneration({
+          post,
           tone,
           userPersona,
           language,
           previousComments,
           postIndex: i,
         });
-        if (resItem.primaryComment) {
-          previousComments.push(resItem.primaryComment);
+
+        if (result.primaryComment) {
+          previousComments.push(result.primaryComment);
         }
-        results.push(resItem);
+
+        results.push(result);
       }
 
-      return res.json({ success: true, results });
+      return res.json({
+        success: true,
+        results,
+      });
     } catch (error: any) {
-      console.error('Batch generation failed:', error);
-      return res.status(500).json({ error: error.message || 'Batch generation failed' });
+      console.error(
+        'Batch generation failed:',
+        error
+      );
+
+      return res.status(500).json({
+        error:
+          error.message ||
+          'Batch generation failed',
+      });
     }
   });
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+      },
       appType: 'spa',
     });
+
     app.use(vite.middlewares);
   } else {
-    const distPath = path.join(process.cwd(), 'dist');
+    // Serve the production Vite build
+    const distPath = path.join(
+      process.cwd(),
+      'dist'
+    );
+
     app.use(express.static(distPath));
+
+    // SPA fallback
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(
+        path.join(distPath, 'index.html')
+      );
     });
   }
 
+  // Start server
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(
+      `Server running on port ${PORT}`
+    );
   });
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error(
+    'Failed to start server:',
+    error
+  );
+
+  process.exit(1);
+});
