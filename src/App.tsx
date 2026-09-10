@@ -9,18 +9,12 @@ import { LinkInputSection } from './components/LinkInputSection';
 import { PostCard } from './components/PostCard';
 import { StatsBar } from './components/StatsBar';
 import { Footer } from './components/Footer';
-import { extractTwitterUrls } from './utils/twitterParser';
+import { extractTwitterUrls, SAMPLE_INPUT_TEXT } from './utils/twitterParser';
 import { getUniqueFallbackComment } from './utils/uniqueCommentGenerator';
 import { TweetPostItem, CommentTone } from './types';
 import { Sparkles, MessageCircle, Info, RefreshCw, Layers } from 'lucide-react';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-const SAMPLE_POST_LINKS = [
-  'https://x.com/OpenAI/status/1760000000000000000',
-  'https://x.com/sama/status/1765000000000000000',
-  'https://x.com/karpathy/status/1770000000000000000',
-];
 
 export default function App() {
   const [rawInput, setRawInput] = useState<string>('');
@@ -72,9 +66,8 @@ export default function App() {
   };
 
   const handleLoadSamples = () => {
-    const sampleText = SAMPLE_POST_LINKS.join('\n');
-    handleInputChange(sampleText);
-    showToast('Loaded 3 sample post links!');
+    handleInputChange(SAMPLE_INPUT_TEXT);
+    showToast('Loaded 3 sample posts with full text!');
   };
 
   const handleClear = () => {
@@ -86,6 +79,10 @@ export default function App() {
     setPosts((prev) =>
       prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
     );
+  };
+
+  const handleUpdateTweetText = (id: string, newText: string) => {
+    updateSinglePost(id, { tweetText: newText });
   };
 
   const handleUpdateComment = (id: string, newComment: string) => {
@@ -168,7 +165,8 @@ export default function App() {
             postIndex,
             targetPost.username || '',
             tone,
-            existingComments
+            existingComments,
+            targetPost.tweetText
           );
 
           updateSinglePost(targetPost.id, {
@@ -190,7 +188,8 @@ export default function App() {
           postIndex,
           targetPost.username || '',
           tone,
-          existingComments
+          existingComments,
+          targetPost.tweetText
         );
 
         updateSinglePost(targetPost.id, {
@@ -391,6 +390,7 @@ export default function App() {
                   post={post}
                   index={idx}
                   onUpdateComment={handleUpdateComment}
+                  onUpdateTweetText={handleUpdateTweetText}
                   onRegenerate={handleRegenerate}
                   onRemove={handleRemovePost}
                   onMarkCommented={handleMarkCommented}

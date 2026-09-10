@@ -215,8 +215,19 @@ export function generateSmartFallback(
   let chosenCasual = pattern.casual[casIdx];
   let chosenQuestion = pattern.question[qIdx];
 
-  // If author is known, occasionally personalize to enhance human feel
-  if (cleanAuthor && seedNum % 2 === 0) {
+  // If tweet text is present, ground comments directly in the post's actual message
+  if (tweetText && tweetText.trim().length > 10) {
+    const cleanSnippet = tweetText.replace(/https?:\/\/\S+/g, '').replace(/[@#]/g, '').trim();
+    const firstSentence = cleanSnippet.split(/[.!?\n]+/)[0]?.trim() || cleanSnippet;
+    const topicQuote = firstSentence.length > 70 ? firstSentence.slice(0, 68) + '...' : firstSentence;
+
+    chosenInsightful = `Regarding "${topicQuote}" — the crucial factor is how rapidly user expectations and real-world workflows are shifting around this.`;
+    chosenCasual = cleanAuthor
+      ? `@${cleanAuthor} strong point on "${topicQuote}". Completely aligns with what we're seeing in practice.`
+      : `Strong point on "${topicQuote}". Really cuts through the noise.`;
+    chosenQuestion = `On "${topicQuote}" — what do you anticipate being the main bottleneck as adoption scales up?`;
+  } else if (cleanAuthor && seedNum % 2 === 0) {
+    // If author is known, occasionally personalize to enhance human feel
     chosenCasual = `@${cleanAuthor} ${chosenCasual}`;
   }
 

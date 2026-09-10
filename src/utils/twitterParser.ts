@@ -1,7 +1,7 @@
 import { TweetPostItem } from '../types';
 
 /**
- * Extracts Twitter / X status URLs and parses metadata
+ * Extracts Twitter / X status URLs and any accompanying post content text
  */
 export function extractTwitterUrls(rawText: string, maxItems = 20): TweetPostItem[] {
   if (!rawText || !rawText.trim()) {
@@ -9,43 +9,70 @@ export function extractTwitterUrls(rawText: string, maxItems = 20): TweetPostIte
   }
 
   // Regex to match twitter.com or x.com status links
-  // Matches:
-  // https://twitter.com/username/status/1234567890
-  // https://x.com/username/status/1234567890
-  // https://mobile.twitter.com/username/status/1234567890
-  // https://x.com/i/web/status/1234567890
   const regex = /https?:\/\/(?:mobile\.)?(?:twitter\.com|x\.com)\/(?:#!\/)?(?:([A-Za-z0-9_]+)\/status(?:es)?\/(\d+)|i\/web\/status\/(\d+))(?:\S*)?/gi;
 
-  const results: TweetPostItem[] = [];
-  const seenIds = new Set<string>();
+  const matches: Array<{
+    cleanUrl: string;
+    username: string;
+    tweetId: string;
+    index: number;
+    length: number;
+  }> = [];
 
   let match: RegExpExecArray | null;
+  const seenIds = new Set<string>();
+
   while ((match = regex.exec(rawText)) !== null) {
-    const rawUrl = match[0].split('?')[0].split('#')[0]; // Clean query params for primary URL
+    const cleanUrl = match[0].split('?')[0].split('#')[0];
     const username = match[1] || 'user';
     const tweetId = match[2] || match[3] || '';
 
     if (tweetId && !seenIds.has(tweetId)) {
       seenIds.add(tweetId);
-      results.push({
-        id: `tweet-${tweetId}-${Date.now()}-${results.length}`,
-        url: rawUrl,
-        tweetId,
+      matches.push({
+        cleanUrl,
         username,
-        status: 'idle',
+        tweetId,
+        index: match.index,
+        length: match[0].length,
       });
 
-      if (results.length >= maxItems) {
+      if (matches.length >= maxItems) {
         break;
       }
     }
   }
 
+  const results: TweetPostItem[] = [];
+
+  for (let i = 0; i < matches.length; i++) {
+    const cur = matches[i];
+    const textStart = cur.index + cur.length;
+    const textEnd = i < matches.length - 1 ? matches[i + 1].index : rawText.length;
+    let snippet = rawText.slice(textStart, textEnd).trim();
+
+    // Clean leading punctuation like hyphens, colons, or quotes separating URL from text
+    snippet = snippet.replace(/^[\s\-:–—|"]+/, '').replace(/"+$/, '').trim();
+
+    results.push({
+      id: `tweet-${cur.tweetId}-${Date.now()}-${i}`,
+      url: cur.cleanUrl,
+      tweetId: cur.tweetId,
+      username: cur.username,
+      authorHandle: `@${cur.username}`,
+      tweetText: snippet || undefined,
+      status: 'idle',
+    });
+  }
+
   return results;
 }
 
-export const SAMPLE_TWEETS = [
-  'https://x.com/ylecun/status/1899120000000000001',
-  'https://x.com/sama/status/1899120000000000002',
-  'https://x.com/karpathy/status/1899120000000000003',
-];
+export const SAMPLE_INPUT_TEXT = `https://x.com/karpathy/status/1626078345293238272
+The hottest new programming language is English.
+
+https://x.com/sama/status/1725732152862085368
+i loved my time at openai. it was transformative for me personally, and hopefully for the world a little bit. most of all i loved working with such talented people.
+
+https://x.com/ylecun/status/1757871239853879308
+Auto-regressive LLMs are useful and have impressive capabilities, but they are not a path to human-level AI (AGI). We need world models and objective-driven AI architectures.`;

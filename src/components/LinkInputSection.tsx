@@ -49,10 +49,10 @@ export const LinkInputSection: React.FC<LinkInputSectionProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
         <div>
           <label htmlFor="twitter-links-textarea" className="block text-sm font-semibold text-zinc-900">
-            Paste Twitter / X Post Links
+            Paste Twitter / X Post Links & Content
           </label>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Paste up to 20 links (one per line or in a block of text). We'll detect each post automatically.
+            Paste up to 20 links. You can also include the tweet text directly below each link so AI analyzes the exact message!
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export const LinkInputSection: React.FC<LinkInputSectionProps> = ({
           rows={5}
           value={rawInput}
           onChange={(e) => onInputChange(e.target.value)}
-          placeholder={`https://x.com/user/status/1234567890\nhttps://twitter.com/creator/status/9876543210\n...`}
+          placeholder={`https://x.com/karpathy/status/1626078345293238272\nThe hottest new programming language is English.\n\nhttps://x.com/sama/status/1725732152862085368\ni loved my time at openai. it was transformative...`}
           className="w-full font-mono text-xs sm:text-sm p-3.5 rounded-xl border border-zinc-300 focus:border-zinc-900 focus:ring-2 focus:ring-zinc-900/10 outline-none transition-all resize-y text-zinc-800 placeholder:text-zinc-400 bg-zinc-50/50"
         />
 

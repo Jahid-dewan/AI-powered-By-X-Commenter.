@@ -56,31 +56,71 @@ const UNIQUE_PERSPECTIVES = [
   },
 ];
 
+/**
+ * Extracts a punchy subject phrase from post text to ground fallback comments
+ */
+function extractSubjectSnippet(text?: string): string {
+  if (!text || !text.trim()) return '';
+  const clean = text.replace(/https?:\/\/\S+/g, '').replace(/[@#]/g, '').trim();
+  const sentences = clean.split(/[.!?\n]+/).filter(Boolean);
+  if (sentences.length > 0) {
+    const first = sentences[0].trim();
+    if (first.length > 10 && first.length < 80) return first;
+    if (first.length >= 80) return first.slice(0, 75).trim() + '...';
+  }
+  return clean.slice(0, 60).trim();
+}
+
 export function getUniqueFallbackComment(
   postIndex: number,
   author: string,
   tone: CommentTone,
-  existingComments: string[] = []
+  existingComments: string[] = [],
+  tweetText?: string
 ): DiverseCommentSet {
   const cleanAuthor = author ? author.replace(/^@/, '') : '';
+  const snippet = extractSubjectSnippet(tweetText);
   const idx = Math.abs(postIndex) % UNIQUE_PERSPECTIVES.length;
   const perspective = UNIQUE_PERSPECTIVES[idx];
 
-  let primary = perspective.insightful;
-  if (tone === 'question') {
-    primary = perspective.question;
-  } else if (tone === 'casual') {
-    primary = cleanAuthor ? `@${cleanAuthor} ${perspective.casual}` : perspective.casual;
-  } else if (tone === 'witty') {
-    primary = `${perspective.casual} Makes legacy alternatives feel like dial-up internet.`;
-  } else if (tone === 'supportive') {
-    primary = `${perspective.casual} Really well executed!`;
+  let insightful = perspective.insightful;
+  let casual = perspective.casual;
+  let question = perspective.question;
+
+  // If post text is available, contextualize comments specifically to that post
+  if (snippet) {
+    insightful = `Regarding "${snippet}" — the non-obvious factor is how rapidly user expectations are evolving around this.`;
+    casual = cleanAuthor
+      ? `@${cleanAuthor} strong point regarding "${snippet}". Exactly what the space needed to hear.`
+      : `Strong point on "${snippet}". Totally matches what we're seeing in practice.`;
+    question = `On the point about "${snippet}" — what do you think is the biggest bottleneck to wide adoption here?`;
   }
 
-  // Ensure no duplicate with existing comments
-  if (existingComments.includes(primary)) {
-    const backup = UNIQUE_PERSPECTIVES[(idx + 1) % UNIQUE_PERSPECTIVES.length];
+  let primary = insightful;
+  if (tone === 'question') {
+    primary = question;
+  } else if (tone === 'casual') {
+    primary = cleanAuthor && !primary.startsWith('@') ? `@${cleanAuthor} ${casual}` : casual;
+  } else if (tone === 'witty') {
+    primary = snippet
+      ? `"${snippet}" — putting this on a billboard outside every tech office tomorrow.`
+      : `${casual} Makes legacy alternatives feel like dial-up internet.`;
+  } else if (tone === 'supportive') {
+    primary = snippet
+      ? `Huge respect for highlighting "${snippet}". Incredibly well articulated.`
+      : `${casual} Really well executed!`;
+  }
+
+  // Ensure uniqueness against previously generated comments
+  let attempts = 0;
+  while (existingComments.includes(primary) && attempts < 10) {
+    const offset = (idx + attempts + 1) % UNIQUE_PERSPECTIVES.length;
+    const backup = UNIQUE_PERSPECTIVES[offset];
     primary = tone === 'question' ? backup.question : backup.insightful;
+    if (snippet) {
+      primary = `${primary} (Key takeaway from "${snippet}")`;
+    }
+    attempts++;
   }
 
   return {
@@ -88,9 +128,9 @@ export function getUniqueFallbackComment(
     sentiment: perspective.sentiment,
     primaryComment: primary,
     variations: {
-      insightful: perspective.insightful,
-      casual: perspective.casual,
-      question: perspective.question,
+      insightful,
+      casual,
+      question,
     },
   };
 }

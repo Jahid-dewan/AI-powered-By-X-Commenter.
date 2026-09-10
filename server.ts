@@ -158,10 +158,12 @@ async function startServer() {
         tweetData = await fetchTweetData(post.url, post.tweetId);
       }
 
-      const postContext = tweetData?.text
-        ? `Tweet Text: "${tweetData.text}"
-Author: ${tweetData.authorName || ''} (${tweetData.authorHandle || ''})
-URL: ${post.url}`
+      const hasRealContent = Boolean(tweetData?.text && tweetData.text.trim());
+      const postContext = hasRealContent
+        ? `EXACT POST CONTENT TO ANALYZE:
+"${tweetData!.text}"
+Author: ${tweetData?.authorName || post.authorName || ''} (${tweetData?.authorHandle || post.authorHandle || ''})
+Post URL: ${post.url}`
         : `Tweet URL: ${post.url}
 Tweet ID: ${post.tweetId}
 Author Handle: ${post.username || ''}`;
@@ -177,18 +179,24 @@ Author Handle: ${post.username || ''}`;
 
       const selectedTonePrompt = toneGuidance[tone] || toneGuidance.engaging;
 
-      const systemPrompt = `You are a world-class social media strategist and active Twitter/X creator.
-Your job is to analyze Twitter/X posts and generate high-impact, authentic, engaging replies that people actually want to read, upvote, and respond to.
+      const systemPrompt = `You are an elite Twitter/X strategist and creator.
+Your job is to read and analyze Twitter/X posts and generate high-impact, authentic, engaging replies that people actually want to read, upvote, and respond to.
 
 CRITICAL TWITTER COMMENT RULES:
-1. ABSOLUTE UNIQUENESS MANDATE: Every comment for every post MUST be completely unique, fresh, and distinct. NEVER repeat identical phrases, openers, sentence structures, or generic filler across different posts.
-2. NEVER use generic AI cliches like "Great post!", "Couldn't agree more!", "This is a game changer!", "Thanks for sharing!", "Spot on!", "Love this perspective!", or "Interesting perspective!".
-3. Speak like a real human on Twitter/X: punchy, sharp, authentic, and direct.
-4. Length: Keep each comment under 260 characters (well within Twitter's 280 character limit).
-5. No hashtag stuffing (at most 0-1 natural hashtag if absolutely essential).
-6. Target Language: ${language}.
+1. POST-SPECIFIC ANALYSIS MANDATE:
+   ${hasRealContent ? '- You MUST directly read, comprehend, and respond specifically to the thoughts, claims, question, or news stated in the EXACT POST CONTENT. Never generate generic platitudes.' : '- Read the post context and craft an insightful comment or question specifically relevant to this creator and their niche.'}
+2. ABSOLUTE UNIQUENESS MANDATE:
+   - Every single comment across every post MUST be completely unique, fresh, and distinct.
+   - NEVER repeat identical sentence starters, phrases, or comment patterns across posts.
+3. ANTI-AI CLICHE MANDATE:
+   - NEVER use generic AI cliches like "Great post!", "Couldn't agree more!", "This is a game changer!", "Thanks for sharing!", "Spot on!", "Love this perspective!", or "Interesting perspective!".
+4. PUNCHY, HUMAN & ACCESSIBLE:
+   - Speak like a real human on Twitter/X: punchy, sharp, authentic, and direct.
+   - Length: Keep each comment under 260 characters (strictly fit within Twitter's 280 character limit).
+   - No hashtag stuffing (at most 0-1 natural hashtag if absolutely essential).
+5. Target Language: ${language}.
 ${userPersona ? `User Voice / Background Persona: "${userPersona}". Reflect this natural style.` : ''}
-${Array.isArray(previousComments) && previousComments.length > 0 ? `PREVIOUSLY GENERATED COMMENTS IN THIS SESSION (DO NOT REPEAT OR CLOSELY IMITATE ANY OF THESE):\n${previousComments.slice(-6).map((c: string) => `- "${c}"`).join('\n')}` : ''}
+${Array.isArray(previousComments) && previousComments.length > 0 ? `PREVIOUSLY GENERATED COMMENTS IN THIS SESSION (DO NOT REPEAT OR CLOSELY IMITATE ANY OF THESE):\n${previousComments.slice(-8).map((c: string) => `- "${c}"`).join('\n')}` : ''}
 
 For the target post:
 - Identify the core topic (1-3 words, e.g. "AI Engineering", "SaaS Growth", "Design Systems").
@@ -200,7 +208,14 @@ For the target post:
   * "question": Asks a sharp, engaging question that invites a reply from the author.
 `;
 
-      const prompt = `Please analyze this Twitter/X post and craft engaging, completely distinct comments:
+      const prompt = hasRealContent
+        ? `Please carefully read and analyze this specific Twitter/X post and craft engaging, completely unique comments responding directly to the author's message:
+${postContext}
+
+Requested Primary Tone: ${tone}
+Uniqueness Seed: ${post.tweetId || postIndex}-${Date.now()}
+Remember: The comment MUST be specific to this exact post content, not a generic filler.`
+        : `Please analyze this Twitter/X post and craft engaging, completely distinct comments:
 ${postContext}
 
 Requested Primary Tone: ${tone}

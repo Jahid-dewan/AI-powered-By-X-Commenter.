@@ -19,6 +19,7 @@ interface PostCardProps {
   post: TweetPostItem;
   index: number;
   onUpdateComment: (id: string, comment: string) => void;
+  onUpdateTweetText?: (id: string, text: string) => void;
   onRegenerate: (id: string) => void;
   onRemove: (id: string) => void;
   onMarkCommented: (id: string) => void;
@@ -29,6 +30,7 @@ export const PostCard: React.FC<PostCardProps> = ({
   post,
   index,
   onUpdateComment,
+  onUpdateTweetText,
   onRegenerate,
   onRemove,
   onMarkCommented,
@@ -181,37 +183,49 @@ export const PostCard: React.FC<PostCardProps> = ({
       {/* Tweet Context / Preview */}
       <div className="px-4 sm:px-5 pt-3 pb-2 text-xs">
         {post.tweetText ? (
-          <div className="p-3 rounded-xl bg-zinc-50 border border-zinc-150 text-zinc-700 leading-relaxed font-sans">
-            <span className="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider block mb-1">
-              Post Content Preview
-            </span>
-            <p className="whitespace-pre-line line-clamp-3 hover:line-clamp-none transition-all">
-              "{post.tweetText}"
-            </p>
+          <div className="p-3.5 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-800 leading-relaxed font-sans">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-emerald-600" />
+                Analyzed Post Content
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsEditingTweetText(!isEditingTweetText)}
+                className="text-[11px] text-zinc-500 hover:text-zinc-900 underline cursor-pointer"
+              >
+                {isEditingTweetText ? 'Done Editing' : 'Edit Post Text'}
+              </button>
+            </div>
+            {!isEditingTweetText ? (
+              <p className="whitespace-pre-line text-xs sm:text-sm text-zinc-700 italic">
+                "{post.tweetText}"
+              </p>
+            ) : (
+              <textarea
+                rows={3}
+                value={post.tweetText}
+                onChange={(e) => onUpdateTweetText?.(post.id, e.target.value)}
+                placeholder="Edit post content..."
+                className="w-full text-xs sm:text-sm p-2 rounded-lg border border-zinc-300 outline-none text-zinc-800 bg-white focus:border-zinc-900"
+              />
+            )}
           </div>
         ) : (
-          <div className="p-2.5 rounded-xl bg-zinc-50/70 border border-zinc-200/70 text-zinc-500 text-[11px] flex items-center justify-between">
-            <span>Post context will be fetched automatically via AI & search.</span>
-            <button
-              type="button"
-              onClick={() => setIsEditingTweetText(!isEditingTweetText)}
-              className="text-blue-600 hover:underline cursor-pointer"
-            >
-              {isEditingTweetText ? 'Hide' : '+ Add / Edit Post Text'}
-            </button>
-          </div>
-        )}
-
-        {isEditingTweetText && (
-          <div className="mt-2">
+          <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 text-zinc-700">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-[11px] font-semibold text-amber-900 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                Post Content (Paste or write text for specific analysis)
+              </span>
+              <span className="text-[10px] text-amber-700 font-medium">Guarantees unique comments</span>
+            </div>
             <textarea
               rows={2}
               value={post.tweetText || ''}
-              onChange={(e) => {
-                post.tweetText = e.target.value;
-              }}
-              placeholder="Paste tweet text here if link is behind privacy settings..."
-              className="w-full text-xs p-2 rounded-lg border border-zinc-300 outline-none text-zinc-800 bg-white"
+              onChange={(e) => onUpdateTweetText?.(post.id, e.target.value)}
+              placeholder="Paste what this post says (e.g. quote, claim, or news) so AI analyzes the exact message..."
+              className="w-full text-xs p-2 rounded-lg border border-amber-200 focus:border-zinc-900 outline-none text-zinc-800 bg-white placeholder:text-zinc-400"
             />
           </div>
         )}
