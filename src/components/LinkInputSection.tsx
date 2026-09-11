@@ -58,7 +58,7 @@ export const LinkInputSection: React.FC<LinkInputSectionProps> = ({
             Paste Twitter / X Post Links & Content
           </label>
           <p className="text-xs text-zinc-500 mt-0.5">
-            Paste up to 20 links. You can also include the tweet text directly below each link so AI analyzes the exact message!
+            Paste up to 30 links. You can also include the tweet text directly below each link so AI analyzes the exact message!
           </p>
         </div>
 
@@ -102,16 +102,16 @@ export const LinkInputSection: React.FC<LinkInputSectionProps> = ({
               className={`inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full ${
                 detectedCount === 0
                   ? 'bg-zinc-100 text-zinc-500'
-                  : detectedCount <= 20
+                  : detectedCount <= 30
                   ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                   : 'bg-amber-50 text-amber-700 border border-amber-200'
               }`}
             >
-              {detectedCount} / 20 links detected
+              {detectedCount} / 30 links detected
             </span>
-            {detectedCount > 20 && (
+            {detectedCount > 30 && (
               <span className="text-xs text-amber-600">
-                (Maximum 20 links will be analyzed)
+                (Maximum 30 links will be analyzed)
               </span>
             )}
           </div>

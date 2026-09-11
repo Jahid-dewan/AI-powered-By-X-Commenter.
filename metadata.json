@@ -1,6 +1,6 @@
 {
   "name": "Twitter Post Comment Assistant",
-  "description": "Batch analyze up to 20 Twitter/X posts, generate personalized engaging comments with AI, and jump directly to commenting with one click.",
+  "description": "Batch analyze up to 30 Twitter/X posts, generate personalized engaging comments with AI, and jump directly to commenting with one click.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -9,6 +9,7 @@ import { LinkInputSection } from './components/LinkInputSection';
 import { PostCard } from './components/PostCard';
 import { StatsBar } from './components/StatsBar';
 import { Footer } from './components/Footer';
+import { LoginModal } from './components/LoginModal';
 import { extractTwitterUrls, SAMPLE_INPUT_TEXT } from './utils/twitterParser';
 import { getUniqueFallbackComment } from './utils/uniqueCommentGenerator';
 import { TweetPostItem, CommentTone } from './types';
@@ -30,6 +31,71 @@ export default function App() {
   const [hasApiKey, setHasApiKey] = useState<boolean | null>(null);
   const stopRequestedRef = useRef<boolean>(false);
 
+  // User login and stats state
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [userName, setUserName] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('app_user_name') || null;
+    } catch {
+      return null;
+    }
+  });
+  const [todayLoginCount, setTodayLoginCount] = useState<number>(1);
+
+  // Fetch login stats on load & trigger initial popup if not yet prompted this session
+  useEffect(() => {
+    // 1. Fetch current login stats
+    fetch('/api/users/stats')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.stats) {
+          setTodayLoginCount(data.stats.todayCount || 1);
+        }
+      })
+      .catch(() => {
+        // Fallback to checking local storage count or default
+      });
+
+    // 2. Automatically show the prompt on first visit if user hasn't logged in or dismissed in this session
+    try {
+      const hasPrompted = sessionStorage.getItem('login_prompt_shown');
+      const savedUser = localStorage.getItem('app_user_name');
+      if (!savedUser && !hasPrompted) {
+        setIsLoginModalOpen(true);
+        sessionStorage.setItem('login_prompt_shown', 'true');
+      }
+    } catch {
+      // Ignore if session storage restricted
+    }
+  }, []);
+
+  const handleUserLogin = async (enteredName: string) => {
+    const trimmed = (enteredName || '').trim();
+    if (!trimmed) return;
+    setUserName(trimmed);
+    try {
+      localStorage.setItem('app_user_name', trimmed);
+    } catch {
+      // ignore
+    }
+
+    try {
+      const res = await fetch('/api/users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      const data = await res.json();
+      if (data.success && data.stats) {
+        setTodayLoginCount(data.stats.todayCount);
+      }
+      showToast(`Welcome ${trimmed}! You're logged in.`);
+    } catch (err) {
+      console.error('Error recording login:', err);
+      showToast(`Welcome ${trimmed}!`);
+    }
+  };
+
   useEffect(() => {
     fetch('/api/health')
       .then((res) => res.json())
@@ -44,7 +110,7 @@ export default function App() {
   // Sync raw input to posts list, preserving existing generated content
   const handleInputChange = (newText: string) => {
     setRawInput(newText);
-    const parsed = extractTwitterUrls(newText, 20);
+    const parsed = extractTwitterUrls(newText, 30);
 
     setPosts((prevPosts) => {
       // Map previous posts by tweetId to keep comments intact if already generated
@@ -397,22 +463,23 @@ export default function App() {
     showToast(`Opening post on X! Comment copied to clipboard.`);
   };
 
-  const readyCount = useMemo(
-    () => posts.filter((p) => p.status === 'ready' || Boolean(p.generatedComment)).length,
-    [posts]
-  );
-  const commentedCount = useMemo(
-    () => posts.filter((p) => p.hasCommented).length,
-    [posts]
-  );
-
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans flex flex-col">
       <Header
         totalCount={posts.length}
-        readyCount={readyCount}
-        commentedCount={commentedCount}
         hasApiKey={hasApiKey}
+        userName={userName}
+        todayCount={todayLoginCount}
+        onOpenLogin={() => setIsLoginModalOpen(true)}
+      />
+
+      {/* User Login/Signup Popup Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLogin={handleUserLogin}
+        currentUserName={userName}
+        todayCount={todayLoginCount}
       />
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
@@ -423,7 +490,7 @@ export default function App() {
               <span>Batch Twitter/X Comment Assistant</span>
             </h2>
             <p className="text-xs text-zinc-600 max-w-2xl leading-relaxed">
-              Paste up to 20 post links. Our AI parses each post context, generates tailored, high-converting comments, and provides a direct <strong>"Comment on X"</strong> button that opens the official reply composer with your comment ready to post.
+              Paste up to 30 post links. Our AI parses each post context, generates tailored, high-converting comments, and provides a direct <strong>"Comment on X"</strong> button that opens the official reply composer with your comment ready to post.
             </p>
           </div>
 
@@ -507,7 +574,7 @@ export default function App() {
               No Twitter / X links added yet
             </h3>
             <p className="text-xs text-zinc-500 max-w-md mx-auto leading-relaxed">
-              Paste your links in the box above (up to 20 links) or click "Load Sample Links" to test the comment generation workflow instantly.
+              Paste your links in the box above (up to 30 links) or click "Load Sample Links" to test the comment generation workflow instantly.
             </p>
             <button
               id="empty-state-load-sample-btn"

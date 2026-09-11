@@ -3,7 +3,7 @@ import { TweetPostItem } from '../types';
 /**
  * Extracts Twitter / X status URLs and any accompanying post content text
  */
-export function extractTwitterUrls(rawText: string, maxItems = 20): TweetPostItem[] {
+export function extractTwitterUrls(rawText: string, maxItems = 30): TweetPostItem[] {
   if (!rawText || !rawText.trim()) {
     return [];
   }

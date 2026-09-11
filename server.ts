@@ -5,15 +5,15 @@ import dotenv from 'dotenv';
 
 import { fetchTweetData } from './server/tweetService.ts';
 import { processCommentGeneration } from './server/commentService.ts';
+import { recordUserLogin, getLoginStats } from './server/db.ts';
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
 
-  // Render provides the PORT environment variable.
-  // Fall back to 3000 for local development.
-  const PORT = Number(process.env.PORT) || 3000;
+  // The application runs behind reverse proxy listening on port 3000
+  const PORT = 3000;
 
   app.use(express.json({ limit: '5mb' }));
 
@@ -28,6 +28,28 @@ async function startServer() {
       status: 'ok',
       hasApiKey,
     });
+  });
+
+  // User login/signup & stats endpoint
+  app.get('/api/users/stats', (req, res) => {
+    try {
+      const stats = getLoginStats();
+      return res.json({ success: true, stats });
+    } catch (error: any) {
+      console.error('Error fetching user stats:', error);
+      return res.status(500).json({ success: false, error: 'Failed to fetch user stats' });
+    }
+  });
+
+  app.post('/api/users/login', (req, res) => {
+    try {
+      const { name } = req.body || {};
+      const result = recordUserLogin(name);
+      return res.json(result);
+    } catch (error: any) {
+      console.error('Error recording user login:', error);
+      return res.status(500).json({ success: false, error: 'Failed to record login' });
+    }
   });
 
   // Extract / fetch individual tweet info
@@ -124,8 +146,8 @@ async function startServer() {
         });
       }
 
-      // Limit batch processing to 20 posts
-      const targetPosts = posts.slice(0, 20);
+      // Limit batch processing to 30 posts
+      const targetPosts = posts.slice(0, 30);
 
       const results = [];
       const previousComments: string[] = [];

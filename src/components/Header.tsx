@@ -1,18 +1,20 @@
 import React, { useState } from 'react';
-import { MessageSquarePlus, Sparkles, ExternalLink, CheckCircle2, Heart, Copy, Check } from 'lucide-react';
+import { MessageSquarePlus, Sparkles, ExternalLink, CheckCircle2, Heart, Copy, Check, User, Users } from 'lucide-react';
 
 interface HeaderProps {
   totalCount: number;
-  readyCount: number;
-  commentedCount: number;
   hasApiKey?: boolean | null;
+  userName?: string | null;
+  todayCount?: number;
+  onOpenLogin?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   totalCount,
-  readyCount,
-  commentedCount,
   hasApiKey,
+  userName,
+  todayCount = 0,
+  onOpenLogin,
 }) => {
   const [copiedDonate, setCopiedDonate] = useState<boolean>(false);
   const [showKeyHelp, setShowKeyHelp] = useState<boolean>(false);
@@ -81,25 +83,42 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto text-xs">
+          {/* Today's User Login Count Badge */}
+          <button
+            id="header-today-users-badge"
+            type="button"
+            onClick={onOpenLogin}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 text-zinc-800 font-medium transition-colors cursor-pointer"
+            title="Total users who logged in today. Click to login/enter your name!"
+          >
+            <Users className="w-3.5 h-3.5 text-zinc-600" />
+            <span>Today's Logins:</span>
+            <span className="font-bold px-1.5 py-0.2 rounded-md bg-zinc-900 text-white text-[11px]">
+              {todayCount}
+            </span>
+          </button>
+
+          {/* User Name / Login button */}
+          <button
+            id="header-user-login-btn"
+            type="button"
+            onClick={onOpenLogin}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
+              userName
+                ? 'bg-zinc-900 text-white border-zinc-900 hover:bg-black'
+                : 'bg-white hover:bg-zinc-50 text-zinc-800 border-zinc-300'
+            }`}
+            title={userName ? `Logged in as ${userName}. Click to change.` : 'Click to enter your name'}
+          >
+            <User className="w-3.5 h-3.5 text-current" />
+            <span>{userName ? userName : 'Enter Name'}</span>
+          </button>
+
           {totalCount > 0 && (
-            <>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-700 font-medium">
-                <span className="text-zinc-500">Links:</span>
-                <span className="font-semibold text-zinc-900">{totalCount}/20</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-medium">
-                <MessageSquarePlus className="w-3.5 h-3.5 text-blue-600" />
-                <span>Ready:</span>
-                <span className="font-semibold text-blue-900">{readyCount}</span>
-              </div>
-
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Commented:</span>
-                <span className="font-semibold text-emerald-900">{commentedCount}</span>
-              </div>
-            </>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-700 font-medium">
+              <span className="text-zinc-500">Links:</span>
+              <span className="font-semibold text-zinc-900">{totalCount}/30</span>
+            </div>
           )}
 
           {/* Header Donate Button */}
