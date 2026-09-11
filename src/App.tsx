@@ -463,10 +463,16 @@ export default function App() {
     showToast(`Opening post on X! Comment copied to clipboard.`);
   };
 
+  const generatedCount = useMemo(
+    () => posts.filter((p) => p.status === 'ready' || Boolean(p.generatedComment)).length,
+    [posts]
+  );
+
   return (
     <div className="min-h-screen bg-zinc-50 text-zinc-900 font-sans flex flex-col">
       <Header
         totalCount={posts.length}
+        generatedCount={generatedCount}
         hasApiKey={hasApiKey}
         userName={userName}
         todayCount={todayLoginCount}

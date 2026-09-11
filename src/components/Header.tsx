@@ -3,6 +3,7 @@ import { MessageSquarePlus, Sparkles, ExternalLink, CheckCircle2, Heart, Copy, C
 
 interface HeaderProps {
   totalCount: number;
+  generatedCount?: number;
   hasApiKey?: boolean | null;
   userName?: string | null;
   todayCount?: number;
@@ -11,6 +12,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   totalCount,
+  generatedCount = 0,
   hasApiKey,
   userName,
   todayCount = 0,
@@ -115,10 +117,18 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {totalCount > 0 && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-700 font-medium">
-              <span className="text-zinc-500">Links:</span>
-              <span className="font-semibold text-zinc-900">{totalCount}/30</span>
-            </div>
+            <>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-100 border border-zinc-200 text-zinc-700 font-medium">
+                <span className="text-zinc-500">Links:</span>
+                <span className="font-semibold text-zinc-900">{totalCount}/30</span>
+              </div>
+
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 font-medium">
+                <MessageSquarePlus className="w-3.5 h-3.5 text-blue-600" />
+                <span>Generated:</span>
+                <span className="font-bold text-blue-900">{generatedCount}/{totalCount}</span>
+              </div>
+            </>
           )}
 
           {/* Header Donate Button */}
